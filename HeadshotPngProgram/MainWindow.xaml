@@ -1,0 +1,42 @@
+﻿<mah:MetroWindow x:Class="HeadshotPngProgram.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:dxmvvm="http://schemas.devexpress.com/winfx/2008/xaml/mvvm"
+                 xmlns:vm="clr-namespace:HeadshotPngProgram.ViewModel"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:HeadshotPngProgram"
+        mc:Ignorable="d"
+        Title="{Binding Title}" Height="180" Width="400" WindowStartupLocation="CenterScreen">
+
+    <mah:MetroWindow.DataContext>
+        <vm:MainViewModel/>
+    </mah:MetroWindow.DataContext>
+
+    <Grid>
+        <Grid>
+            <StackPanel>
+                <StackPanel>
+                    <TextBlock Text="This program will cut the image in 4 different Dimensions." Margin="10 10 0 0"/>
+                    <TextBlock Text="Ex." Margin="10 0 0 0"/>
+                    <TextBlock Text="Cutout(2100x1800px), (5x7inches), icon(120x155px), web(300x420px)." FontSize="11" Margin="15 0 0 0"/>
+                    <TextBlock Text="Input PNG image." Margin="10 20 0 0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Process" HorizontalAlignment="Left" VerticalAlignment="Top" Width="100" Margin="10" Command="{Binding DetectBodyCommand}" />
+                    <StackPanel Margin="0 10 0 0">
+                        <TextBlock Name="statusText" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11" 
+                           Text="{Binding StatusMessage}" Visibility="Visible"/>
+                        <ProgressBar Name="progressBar" HorizontalAlignment="Center" VerticalAlignment="Center" Width="230" Height="10" 
+                         Minimum="0" Maximum="100" IsIndeterminate="{Binding IsProcessing}" Value="{Binding Progress}" Visibility="Visible"/>
+                    </StackPanel>
+                </StackPanel>
+
+            </StackPanel>
+
+
+        </Grid>
+    </Grid>
+</mah:MetroWindow>
+
