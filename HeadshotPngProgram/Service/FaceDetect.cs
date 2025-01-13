@@ -1,10 +1,6 @@
-﻿using Emgu.CV;
-using Emgu.CV.CvEnum;
-using Emgu.CV.Structure;
-using ImageMagick;
+﻿using ImageMagick;
+using OpenCvSharp;
 using System;
-using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 
 namespace HeadshotPngProgram.Service
@@ -24,16 +20,18 @@ namespace HeadshotPngProgram.Service
         /// <param name="targetDPI">The target DPI for the output image.</param>
         /// <param name="isZoom">Indicates whether to apply zoom to the image before processing.</param>
         /// <returns>A MagickImage with the face centered and resized, or null if an error occurs.</returns>
-        public MagickImage CenterImage(MagickImage magickImage, int dimensionWidth, int dimensionHeight, int targetDPI, bool isZoom, float zoompercent)
+        public MagickImage CenterImage(MagickImage magickImage, int dimensionWidth, int dimensionHeight, int targetDPI, bool isZoom, float zoompercent, bool facedetect)
         {
             try
             {
                 // Load the Haar Cascade face detector
-                var faceCascade = new OpenCvSharp.CascadeClassifier(@"Asset\haarcascade_frontalface_default.xml");
+                var faceCascade = new CascadeClassifier(@"Asset\haarcascade_frontalface_default.xml");
+                var eyesCascade = new CascadeClassifier(@"Asset\haarcascade_eye.xml");
+                var smileCascade = new CascadeClassifier(@"Asset\haarcascade_smile.xml");
 
                 // Read the input image (using OpenCvSharp)
                 byte[] imageBytes = magickImage.ToByteArray(MagickFormat.Png);
-                OpenCvSharp.Mat image = OpenCvSharp.Cv2.ImDecode(imageBytes, OpenCvSharp.ImreadModes.Unchanged);
+                Mat image = Cv2.ImDecode(imageBytes, ImreadModes.Unchanged);
 
 
                 //OpenCvSharp.Mat image = OpenCvSharp.Cv2.ImRead(image);
@@ -51,29 +49,98 @@ namespace HeadshotPngProgram.Service
 
 
                 // Convert to grayscale for face detection
-                OpenCvSharp.Mat gray = new OpenCvSharp.Mat();
-                OpenCvSharp.Cv2.CvtColor(image, gray, OpenCvSharp.ColorConversionCodes.BGR2GRAY);
+                Mat gray = new Mat();
+                Cv2.CvtColor(image, gray, ColorConversionCodes.BGR2GRAY);
 
                 // Detect faces
-                var facesDetect = faceCascade.DetectMultiScale(gray, 1.1, 5, OpenCvSharp.HaarDetectionTypes.ScaleImage);
-                if (facesDetect.Length == 0)
+                //var facesDetect = faceCascade.DetectMultiScale(gray, 1.1, 5, OpenCvSharp.HaarDetectionTypes.ScaleImage);
+                var facesDetect = faceCascade.DetectMultiScale(gray, 1.05, 3, minSize: new Size(20, 20));
+                int faceCenterX = 0;
+
+                if (facedetect)
                 {
-                    WarningMessage("No face detected.");
+                    if (facesDetect.Length != 0)
+                    {
+                        Rect largestFace = facesDetect[0];
+                        foreach (var face in facesDetect)
+                        {
+                            if (face.Width * face.Height > largestFace.Width * largestFace.Height)
+                            {
+                                largestFace = face;
+                            }
+                        }
+
+                        // Draw rectangles around detected faces
+                        //Cv2.Rectangle(image, largestFace, Scalar.Red, 2);
+
+                        // Calculate the center of the detected face
+                        faceCenterX = largestFace.X + largestFace.Width / 2;
+
+
+                    }
+                    else { return null; }
                 }
+                else 
+                {
+                    faceCenterX = image.Width / 2;
+                }
+
+
+                #region other detector
+                //else
+                //{
+                //    WarningMessage("No face detected this will proceed to smile detect.");
+                //    var smileDetect = smileCascade.DetectMultiScale(gray, 1.05, 3, minSize: new Size(20, 20));
+
+                //    // Draw rectangles around detected eyes
+
+                //    Rect largestEye = smileDetect[0];
+                //    foreach (var eye in smileDetect)
+                //    {
+                //        Cv2.Rectangle(image, eye, Scalar.Blue, 2);
+                //    }
+
+                //    if (smileDetect.Length > 0)
+                //    {
+                //        foreach (var eye in smileDetect)
+                //        {
+                //            if (eye.Width * eye.Height > largestEye.Width * largestEye.Height)
+                //            {
+                //                largestEye = eye;
+                //            }
+                //        }
+
+                //        // Draw the largest eye rectangle in red (or any other color)
+                //        Cv2.Rectangle(image, largestEye, Scalar.Red, 2); // Red rectangle
+
+                //        // Calculate the center of the detected face
+                //        faceCenterX = largestEye.X + largestEye.Width / 2;
+
+                //    }
+                //    else
+                //    {
+                //        WarningMessage("No smile detected this will proceed to original image.");
+                //        // If no eyes are detected, default to the image center
+                //        faceCenterX = image.Width / 2;
+                //    }
+                //}
+                #endregion
+
+                //else {  faceCenterX = image.Width / 2;}
 
                 // Get the largest face (if multiple faces are detected)
-                OpenCvSharp.Rect largestFace = facesDetect[0];
-                foreach (var face in facesDetect)
-                {
-                    if (face.Width * face.Height > largestFace.Width * largestFace.Height)
-                    {
-                        largestFace = face;
-                    }
-                }
+                //Rect largestFace = facesDetect[0];
+                //foreach (var face in facesDetect)
+                //{
+                //    if (face.Width * face.Height > largestFace.Width * largestFace.Height)
+                //    {
+                //        largestFace = face;
+                //    }
+                //}
 
                 // Calculate the center of the detected face
-                int faceCenterX = largestFace.X + largestFace.Width / 2;
-                int faceCenterY = largestFace.Y + largestFace.Height / 2;
+                //int faceCenterX = largestFace.X + largestFace.Width / 2;
+                //int faceCenterY = largestFace.Y + largestFace.Height / 2;
 
                 // Calculate the center of the target canvas (dimensionWidth x dimensionHeight)
                 int targetCenterX = dimensionWidth / 2;
@@ -85,15 +152,15 @@ namespace HeadshotPngProgram.Service
                 int translationY = 0;
 
                 // Create the transformation matrix (translation)
-                OpenCvSharp.Mat translationMatrix = OpenCvSharp.Mat.Eye(2, 3, OpenCvSharp.MatType.CV_32F);
+                Mat translationMatrix = Mat.Eye(2, 3, MatType.CV_32F);
                 translationMatrix.Set<float>(0, 2, translationX);
                 translationMatrix.Set<float>(1, 2, translationY);
 
                 // Apply the affine transformation (translation)
-                OpenCvSharp.Mat centeredImage = new OpenCvSharp.Mat();
-                OpenCvSharp.Cv2.WarpAffine(image, centeredImage, translationMatrix, new OpenCvSharp.Size(dimensionWidth, dimensionHeight));
+                Mat centeredImage = new Mat();
+                Cv2.WarpAffine(image, centeredImage, translationMatrix, new Size(dimensionWidth, dimensionHeight));
 
-                OpenCvSharp.Cv2.ImEncode(".png", centeredImage, out byte[] resultBytes); // Encode Mat to byte array (JPEG)
+                Cv2.ImEncode(".png", centeredImage, out byte[] resultBytes); // Encode Mat to byte array (JPEG)
                 using (var ms = new MemoryStream(resultBytes))
                 {
                     // Create MagickImage from byte array
@@ -111,6 +178,7 @@ namespace HeadshotPngProgram.Service
                     whiteBackground.Density = new Density(targetDPI);
                     whiteBackground.FilterType = FilterType.Lanczos;
 
+
                     return whiteBackground;
                 }
 
@@ -125,7 +193,7 @@ namespace HeadshotPngProgram.Service
         }
 
         //zoom base on zoomfactor = 1.2f
-        private OpenCvSharp.Mat Zoomimage(OpenCvSharp.Mat image, float zoomFactor)
+        private Mat Zoomimage(Mat image, float zoomFactor)
         {
             try
             {
@@ -134,10 +202,10 @@ namespace HeadshotPngProgram.Service
                 int newHeight = (int)(image.Height * zoomFactor);
 
                 // Update the image to the final resized version
-                OpenCvSharp.Mat zoomedImage = new OpenCvSharp.Mat();
+                Mat zoomedImage = new Mat();
                 for (int i = 0; i < 3; i++)  // Resize in 3 steps for smoother quality
                 {
-                    OpenCvSharp.Cv2.Resize(image, zoomedImage, new OpenCvSharp.Size(newWidth, newHeight), 0, 0, OpenCvSharp.InterpolationFlags.Lanczos4);
+                    Cv2.Resize(image, zoomedImage, new Size(newWidth, newHeight), 0, 0, InterpolationFlags.Lanczos4);
                 }
 
                 image = zoomedImage;
@@ -150,6 +218,7 @@ namespace HeadshotPngProgram.Service
                 return null;
             }
         }
+
 
         #endregion 
 

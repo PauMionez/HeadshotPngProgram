@@ -9,13 +9,11 @@ namespace HeadshotPngProgram.Service
 {
     internal class DetectPerson : Abstract.ViewModelBase
     {
-
         /// <summary>
-        /// Detects faces and upper bodies (persons) in the given image using Haar Cascade classifiers.
-        /// It returns a list of bounding boxes (rectangles) around the detected faces and upper bodies.
+        /// Detects the face and upper body in an image by analyzing its transparency (alpha channel).
         /// </summary>
-        /// <param name="image">The input image to be processed for detection.</param>
-        /// <returns>A list of rectangles representing detected faces and upper bodies.</returns>
+        /// <param name="image">The input image in the form of a MagickImage (PNG format).</param>
+        /// <returns>A list of rectangles representing the detected face and upper body areas. If no detection occurs, an empty list is returned.</returns>
         public List<Rectangle> DetectFaceAndUpperBody(MagickImage image)
         {
             try
@@ -48,7 +46,7 @@ namespace HeadshotPngProgram.Service
                     var largestContour = contours.OrderByDescending(c => Cv2.ContourArea(c)).First();
                     Rect boundingBox = Cv2.BoundingRect(largestContour);
 
-                    // Create a list to hold the detected objects (only one person in this case)
+                    // Create a list to hold the detected objects 
                     List<Rectangle> detectedObjects = new List<Rectangle>
                     {
                         new Rectangle(boundingBox.X, boundingBox.Y, boundingBox.Width, boundingBox.Height)

@@ -28,7 +28,7 @@ namespace HeadshotPngProgram.Abstract
         {
             get
             {
-                return $"{ApplicationName} v1.4";
+                return $"{ApplicationName} v2.1";
             }
         }
 

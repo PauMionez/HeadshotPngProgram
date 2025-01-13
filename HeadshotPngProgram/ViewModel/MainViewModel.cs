@@ -8,6 +8,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Interop;
+using System.Windows.Media.Imaging;
 
 
 
@@ -22,7 +23,8 @@ namespace HeadshotPngProgram.ViewModel
         {
 
             DetectBodyCommand = new AsyncCommand(DetectBodyAndCreateCutout);
-
+            IsFaceDetectChecked = true;
+            EnableCheckedBox = true;
         }
 
         #region Properties
@@ -31,6 +33,14 @@ namespace HeadshotPngProgram.ViewModel
         {
             get { return _progress; }
             set { _progress = value; OnPropertyChanged(); }
+        }
+
+        private string _currentImageName;
+
+        public string CurrentImageName
+        {
+            get { return _currentImageName; }
+            set { _currentImageName = value; OnPropertyChanged(); }
         }
 
         private int _imageprogress;
@@ -53,6 +63,33 @@ namespace HeadshotPngProgram.ViewModel
             get { return _isProcessing; }
             set { _isProcessing = value; OnPropertyChanged(); }
         }
+
+        private BitmapImage _SelectedImageSource;
+
+        public BitmapImage SelectedImageSource
+        {
+            get { return _SelectedImageSource; }
+            set { _SelectedImageSource = value; OnPropertyChanged(); }
+        }
+
+
+        private bool _isFaceDetectChecked;
+
+        public bool IsFaceDetectChecked
+        {
+            get { return _isFaceDetectChecked; }
+            set { _isFaceDetectChecked = value; OnPropertyChanged(); }
+        }
+
+        private bool _enableCheckedBox;
+
+        public bool EnableCheckedBox
+        {
+            get { return _enableCheckedBox; }
+            set { _enableCheckedBox = value; OnPropertyChanged(); }
+        }
+
+
         #endregion
 
 
@@ -64,6 +101,7 @@ namespace HeadshotPngProgram.ViewModel
         {
             try
             {
+                EnableCheckedBox = false;
                 IsProcessing = true;
                 StatusMessage = "Processing...";
                 Progress = 0;
@@ -87,14 +125,19 @@ namespace HeadshotPngProgram.ViewModel
                 {
                     StatusMessage = status;
                 });
+                Progress<string> currentimage = new Progress<string>((currenimageprocess) =>
+                {
+                    CurrentImageName = currenimageprocess;
+                });
 
                 //process images asynchronously
                 int totalImages = imagePaths.Length;
-                await ProcessImageLoadingAsync(imagePaths, statusProgress);
+                await ProcessImageLoadingAsync(imagePaths, statusProgress, currentimage);
 
                 StatusMessage = $"Processing complete! ({totalImages} images processed)";
                 Progress = 100;
                 IsProcessing = false;
+                EnableCheckedBox = true;
             }
             catch (Exception ex)
             {
@@ -110,7 +153,7 @@ namespace HeadshotPngProgram.ViewModel
         /// <param name="imagePaths">Array of image file paths to process.</param>
         /// <param name="statusProgress">Progress reporter for updating the UI with processing status.</param>
         /// <returns></returns>
-        private async Task ProcessImageLoadingAsync(string[] imagePaths, IProgress<string> statusProgress)
+        private async Task ProcessImageLoadingAsync(string[] imagePaths, IProgress<string> statusProgress, IProgress<string> imagename)
         {
             try
             {
@@ -119,11 +162,17 @@ namespace HeadshotPngProgram.ViewModel
                 for (int i = 0; i < totalImages; i++)
                 {
                     string imagePath = imagePaths[i];
+                    string imageName = Path.GetFileName(imagePath);
+
+                    // Report the image name
+                    imagename.Report(imageName);
 
                     //Process image (asynchronous)
                     await ProcessImagesAsync(imagePath);
 
+
                     statusProgress.Report($"({i + 1}/{totalImages}) Processing image...");
+                    
                 }
 
                 statusProgress.Report($"Processing complete! ({totalImages} images processed)");
@@ -149,14 +198,14 @@ namespace HeadshotPngProgram.ViewModel
                 if (string.IsNullOrEmpty(path)) return;
 
                 // Extract the base filename (without extension)
-                string imageName = System.IO.Path.GetFileNameWithoutExtension(path);
+                string imageName = Path.GetFileNameWithoutExtension(path);
 
                 // Define the output folder where images will be saved
-                string directoryPath = System.IO.Path.GetDirectoryName(path);
-                string outputFolder = System.IO.Path.Combine(directoryPath, "Output");
+                string directoryPath = Path.GetDirectoryName(path);
+                string outputFolder = Path.Combine(directoryPath, "Output");
 
                 // Create a subfolder inside Output folder with the image name
-                string imageOutputFolder = System.IO.Path.Combine(outputFolder, imageName);
+                string imageOutputFolder = Path.Combine(outputFolder, imageName);
                 if (!Directory.Exists(imageOutputFolder))
                 {
                     Directory.CreateDirectory(imageOutputFolder);
@@ -230,14 +279,31 @@ namespace HeadshotPngProgram.ViewModel
                             MagickImage cutout = cropimage.ProcessImage(resizedImage, dimensionHeight, personX, personY, personWidth, personHeight);
 
                             // Alight person/object to center by its face position
-                            MagickImage centerimagefinal = FaceDetector.CenterImage(cutout, dimensionWidth, dimensionHeight, targetDPI, isZoom, zoompercent);
+                            MagickImage centerimagefinal = FaceDetector.CenterImage(cutout, dimensionWidth, dimensionHeight, targetDPI, isZoom, zoompercent, IsFaceDetectChecked);
 
+                            if (centerimagefinal == null) 
+                            { 
+                                WarningMessage($"No face detected. Please crop this {outputName} image manually. Thank you!."); 
+                                return;
+                            }
+
+                            // Convert the MagickImage to a byte array
+                            byte[] imageBytes = centerimagefinal.ToByteArray(MagickFormat.Png);
+
+                            using (var ms = new MemoryStream(imageBytes))
+                            {
+                                BitmapImage bitmap = new BitmapImage();
+                                bitmap.BeginInit();
+                                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                                bitmap.StreamSource = ms;
+                                bitmap.EndInit();
+                                bitmap.Freeze(); // Make it cross-thread accessible
+                                SelectedImageSource = bitmap;
+                            }
 
                             // Save the processed image
                             if (!Directory.Exists(imageOutputFolder))
-                            {
-                                Directory.CreateDirectory(imageOutputFolder);
-                            }
+                               {Directory.CreateDirectory(imageOutputFolder); }
 
                             //string cutoutPath = System.IO.Path.Combine(outputFolder, "NewnewCutout.jpg");
                             string cutoutPath = Path.Combine(imageOutputFolder, outputName);

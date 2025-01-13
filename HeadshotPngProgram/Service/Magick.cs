@@ -111,6 +111,11 @@ namespace HeadshotPngProgram.Service
             }
         }
 
+        internal byte[] ToByteArray(MagickFormat png)
+        {
+            throw new NotImplementedException();
+        }
+
 
 
         #region trash code

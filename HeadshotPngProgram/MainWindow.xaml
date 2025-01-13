@@ -8,7 +8,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:HeadshotPngProgram"
         mc:Ignorable="d"
-        Title="{Binding Title}" Height="180" Width="400" WindowStartupLocation="CenterScreen">
+        Title="{Binding Title}" Height="500" Width="400" WindowStartupLocation="CenterScreen" Background="WhiteSmoke">
 
     <mah:MetroWindow.DataContext>
         <vm:MainViewModel/>
@@ -21,7 +21,19 @@
                     <TextBlock Text="This program will cut the image in 4 different Dimensions." Margin="10 10 0 0"/>
                     <TextBlock Text="Ex." Margin="10 0 0 0"/>
                     <TextBlock Text="Cutout(2100x1800px), (5x7inches), icon(120x155px), web(300x420px)." FontSize="11" Margin="15 0 0 0"/>
-                    <TextBlock Text="Input PNG image." Margin="10 20 0 0"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="10 30 0 0">
+                        <TextBlock Text="Use face detector to center image: " ToolTip="Off this if can't detect face in the image"/>
+                        <CheckBox IsChecked="{Binding IsFaceDetectChecked, Mode=TwoWay}" IsEnabled="{Binding EnableCheckedBox}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Margin="10 20 0 0">
+                            <Run Text="Image on Processing ("/>
+                            <Run Text="{Binding CurrentImageName}"/>
+                            <Run Text=")"/>
+                        </TextBlock>
+                        
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal">
                     <Button Content="Process" HorizontalAlignment="Left" VerticalAlignment="Top" Width="100" Margin="10" Command="{Binding DetectBodyCommand}" />
@@ -32,7 +44,9 @@
                          Minimum="0" Maximum="100" IsIndeterminate="{Binding IsProcessing}" Value="{Binding Progress}" Visibility="Visible"/>
                     </StackPanel>
                 </StackPanel>
-
+                    <StackPanel>
+                    <Image x:Name="image" Source="{Binding SelectedImageSource}" Height="200" Width="300" Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Top" CacheMode="BitmapCache" Margin="50 0 0 0"/>
+                </StackPanel>
             </StackPanel>
 
 
